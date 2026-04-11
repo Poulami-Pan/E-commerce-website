@@ -3,6 +3,7 @@ package com.company.demo.serviceimpl;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.company.demo.entity.Customer;
@@ -19,6 +20,9 @@ public class UserServiceImpl implements UserService {
 	@Autowired
 	private UserRepository userRepository;
 
+	@Autowired
+	private PasswordEncoder passwordEncoder;
+
 	@Override
 	public User createUser(User user) throws EntityExistsException {
 		if (this.userRepository.findById(user.getUsername()).orElse(null) != null)
@@ -27,6 +31,7 @@ public class UserServiceImpl implements UserService {
 		Customer customer = new Customer(null, null, null, null, null, user);
 		user.setCustomer(customer);
 		user.setUserRole("ROLE_" + user.getUserRole());
+		user.setPassword(passwordEncoder.encode(user.getPassword()));
 		User createdUser = this.userRepository.save(user);
 		return createdUser;
 	}

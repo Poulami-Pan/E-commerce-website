@@ -5,25 +5,23 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.password.NoOpPasswordEncoder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import com.company.demo.jwt.JwtAuthenticationEntryPoint;
 import com.company.demo.jwt.JwtAuthenticationFilter;
-import com.company.demo.service.CustomUserDetailsService;
 
 @Configuration
 @EnableWebSecurity
-@SuppressWarnings("deprecation")
 @EnableGlobalMethodSecurity(prePostEnabled = true)
-public class CustomWebSecurityConfiguration extends WebSecurityConfigurerAdapter {
+public class CustomWebSecurityConfiguration {
 
 	private static final String H2 = "/h2db/**";
 
@@ -31,39 +29,46 @@ public class CustomWebSecurityConfiguration extends WebSecurityConfigurerAdapter
 	private JwtAuthenticationFilter jwtAuthenticationFilter;
 
 	@Autowired
-	private CustomUserDetailsService customUserDetailsService;
-
-	@Autowired
 	private JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 
-	@Override
-	protected void configure(HttpSecurity http) throws Exception {
-//		super.configure(http);
+	@Bean
+	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 		http.csrf().ignoringAntMatchers(H2).and().headers().frameOptions().sameOrigin();
-		http.cors().and().csrf().disable().authorizeRequests().antMatchers(HttpHeaders.ALLOW).permitAll()
-				.antMatchers(H2, "/api/auth/**", "/api/user/register").permitAll().antMatchers("/",
-						"/api/book/fetch/**", "/api/book/fetch-all", "/api/author/fetch/**", "/api/author/fetch-all")
-				.permitAll().anyRequest().authenticated();
-		http.exceptionHandling().authenticationEntryPoint(jwtAuthenticationEntryPoint);
-		http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
-		http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-	}
+		http.cors().and().csrf().disable()
+				.authorizeRequests()
+.antMatchers(
+    "/",
+    "/index.html",
+    "/css/**",
+    "/js/**",
+    "/images/**",
+    "/api/auth/**",
+    "/api/user/register",
+    "/api/book/fetch/**",
+    "/api/book/fetch-all",
+    "/api/author/fetch/**",
+    "/api/author/fetch-all",
+    H2
+).permitAll()
+.anyRequest().authenticated()
+				.and()
+				.exceptionHandling().authenticationEntryPoint(jwtAuthenticationEntryPoint)
+				.and()
+				.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
 
-	@Override
-	protected void configure(AuthenticationManagerBuilder auth) throws Exception {
-//		super.configure(auth);
-		auth.userDetailsService(customUserDetailsService).passwordEncoder(passwordEncoder());
+		http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+		return http.build();
 	}
 
 	@Bean
 	public PasswordEncoder passwordEncoder() {
-//		return new BCryptPasswordEncoder(10);
-		return NoOpPasswordEncoder.getInstance();
+		return new BCryptPasswordEncoder();
 	}
 
 	@Bean
-	public AuthenticationManager authenticationManager() throws Exception {
-		return super.authenticationManager();
+	public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
+		return authenticationConfiguration.getAuthenticationManager();
 	}
 
 }
+
